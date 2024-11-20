@@ -1,14 +1,3 @@
--- You may add the code for Q8, Q9, Q10 here
-
-
-
-
-
-
-
-
-
-
 -- Q9
 
 -- Number of Reviews pre and post covid
@@ -91,6 +80,28 @@ SELECT
 FROM airlines_reviews
 WHERE Airline = 'Singapore Airlines'
 GROUP BY Period, Class;
+
+
+
+
+-- When rating <= 2, considered as complaints (As a proportion of reviews) -- Group by BOTH Period and Type of Traveller
+SELECT 
+    CASE 
+        WHEN ReviewDate < '2020-03-01' THEN 'Pre-COVID'
+        ELSE 'Post-COVID'
+    END AS Period,
+    TypeofTraveller,
+    COUNT(*) AS TotalReviews,
+    COUNT(CASE WHEN SeatComfort <= 2 THEN 1 ELSE NULL END) * 100.0 / COUNT(*) AS SeatComfortComplaintRate,
+    COUNT(CASE WHEN StaffService <= 2 THEN 1 ELSE NULL END) * 100.0 / COUNT(*) AS StaffServiceComplaintRate,
+    COUNT(CASE WHEN FoodnBeverages <= 2 THEN 1 ELSE NULL END) * 100.0 / COUNT(*) AS FoodComplaintRate,
+    COUNT(CASE WHEN InflightEntertainment <= 2 THEN 1 ELSE NULL END) * 100.0 / COUNT(*) AS EntertainmentComplaintRate,
+    COUNT(CASE WHEN ValueForMoney <= 2 THEN 1 ELSE NULL END) * 100.0 / COUNT(*) AS ValueComplaintRate
+FROM airlines_reviews
+WHERE Airline = 'Singapore Airlines'
+GROUP BY Period, TypeofTraveller;
+
+
 
 
 
