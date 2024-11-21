@@ -1,6 +1,6 @@
 -- Source CSV Data File: https://data.gov.sg/datasets?query=singapore+airlines&page=1&resultId=d_a430153d90c8c0ad964fa822bd1d6b2b
 
--- In this script is the database implementation / deployment procedure for "Singapore Airlines Monthly Aircraft and Passenger Movement"
+-- In this script is the database implementation / deployment procedure for "Changi Airport Monthly Aircraft and Passenger Movement"
 
 -- Refers to Changi Airport only. Data covers scheduled passenger flight services from Changi Airport only.
 -- Other aircraft service types like non-scheduled and scheduled cargo are excluded.
