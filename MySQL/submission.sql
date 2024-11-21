@@ -1,16 +1,63 @@
 -- You may add the code for Q8, Q9, Q10 here
+-- Q1
+select distinct category, count(*) as cnt from customer_support group by category;
 
+-- Q2 find tag Q and W
+select count(*) as cnt from customer_support
+where flags like '%Q%' and flags like '%W%';
 
+-- Q3
+select a.Airline, a.Cancellations, b.Delays
+from (
+	select Airline, count(case when Cancelled = 1 then 1 else null end) as Cancellations
+	from flight_delay 
+	group by Airline) as a
+left join (
+	select Airline, count(case when ArrDelay > 0 then 1 else null end) as Delays
+	from flight_delay 
+	group by Airline) as b
+on a.Airline = b.Airline;
 
+-- Q4
+with mdelay as (
+	select substring(Date, 4, 2) as Month, Origin, Dest, count(ArrDelay) as Cnt
+    from flight_delay
+    where ArrDelay > 0
+	group by Month, Origin, Dest
+)
+select Month, Origin, Dest, Cnt from mdelay
+where (Month, Cnt) in (
+	select Month, max(Cnt) from mdelay
+    group by Month
+);
 
+-- Q5
 
+-- Q6
+select count(distinct route) from customer_booking;
+select 
+	sales_channel, route, 
+    avg(length_of_stay) / avg(flight_hour),
+    avg(wants_extra_baggage) / avg(flight_hour),
+    avg(wants_preferred_seat) / avg(flight_hour),
+    avg(wants_in_flight_meals) / avg(flight_hour)
+from customer_booking
+group by sales_channel, route;
 
-
-
-
-
-
-
+-- Q7
+(
+select 'Seasonal' as Periods, Airline, Class, avg(SeatComfort), avg(FoodnBeverages), avg(InflightEntertainment), avg(ValueForMoney), avg(OverallRating)
+from airlines_reviews
+where substring(MonthFlown, 1, 3) in ('Jun', 'Jul', 'Aug', 'Sep')
+group by Airline, Class
+)
+union all
+(
+select 'Non-Seasonal' as Periods, Airline, Class, avg(SeatComfort), avg(FoodnBeverages), avg(InflightEntertainment), avg(ValueForMoney), avg(OverallRating)
+from airlines_reviews
+where substring(MonthFlown, 1, 3) not in ('Jun', 'Jul', 'Aug', 'Sep')
+group by Airline, Class
+);
 
 
 
@@ -204,4 +251,82 @@ GROUP BY Period, TypeofTraveller;
 
 
 
+
+
+
+
+-- Q10
+with Ratings as (
+    (
+    select 
+        Airline, 
+        TypeofTraveller,
+        'SeatComfort' as RatingType, 
+        sum(case when SeatComfort < 3 then 1 else 0 end) as Negative,
+        sum(case when SeatComfort = 3 then 1 else 0 end) as Neutral,
+        sum(case when SeatComfort > 3 then 1 else 0 end) as Positive
+    from airlines_reviews
+    group by Airline, TypeofTraveller
+    )
+    union all
+    (
+    select 
+        Airline, 
+        TypeofTraveller,
+        'StaffService' as RatingType, 
+        sum(case when StaffService < 3 then 1 else 0 end) as Negative,
+        sum(case when StaffService = 3 then 1 else 0 end) as Neutral,
+        sum(case when StaffService > 3 then 1 else 0 end) as Positive
+    from airlines_reviews
+    group by Airline, TypeofTraveller
+    )
+    union all
+    (
+    select 
+        Airline, 
+        TypeofTraveller,
+        'FoodnBeverages' as RatingType, 
+        sum(case when FoodnBeverages < 3 then 1 else 0 end) as Negative,
+        sum(case when FoodnBeverages = 3 then 1 else 0 end) as Neutral,
+        sum(case when FoodnBeverages > 3 then 1 else 0 end) as Positive
+    from airlines_reviews
+    group by Airline, TypeofTraveller
+    )
+    union all
+    (
+    select 
+        Airline, 
+        TypeofTraveller,
+        'InflightEntertainment' as RatingType, 
+        sum(case when InflightEntertainment < 3 then 1 else 0 end) as Negative,
+        sum(case when InflightEntertainment = 3 then 1 else 0 end) as Neutral,
+        sum(case when InflightEntertainment > 3 then 1 else 0 end) as Positive
+    from airlines_reviews
+    group by Airline, TypeofTraveller
+    )
+    union all
+    (
+    select 
+        Airline, 
+        TypeofTraveller,
+        'ValueForMoney' as RatingType, 
+        sum(case when ValueForMoney < 3 then 1 else 0 end) as Negative,
+        sum(case when ValueForMoney = 3 then 1 else 0 end) as Neutral,
+        sum(case when ValueForMoney > 3 then 1 else 0 end) as Positive
+    from airlines_reviews
+    group by Airline, TypeofTraveller
+    )
+)
+select 
+    Airline, 
+    TypeofTraveller, 
+    RatingType, 
+    Negative, 
+    Neutral, 
+    Positive, 
+    round(Negative * 100.0 / (Negative + Neutral + Positive), 2) as NegativePercentage,
+    round(Neutral * 100.0 / (Negative + Neutral + Positive), 2) as NeutralPercentage,
+    round(Positive * 100.0 / (Negative + Neutral + Positive), 2) as PositivePercentage
+from Ratings
+order by Airline, TypeofTraveller, RatingType;
 
