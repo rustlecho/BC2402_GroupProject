@@ -2,9 +2,13 @@
 
 -- In this script is the database implementation / deployment procedure for "Singapore Airlines Monthly Aircraft and Passenger Movement"
 
+-- Refers to Changi Airport only. Data covers scheduled passenger flight services from Changi Airport only.
+-- Other aircraft service types like non-scheduled and scheduled cargo are excluded.
+-- Local Airline refers to Singapore International Airlines (SQ), Silk Air (MI), Jetstar Asia (3K) and Scoot (TR). Foreign Airline refers to the airlines that are not included in 'Local Airline'.
+
 -- Create Database
-CREATE DATABASE SIA_AircraftData;
-USE SIA_AircraftData;
+CREATE DATABASE ChangiAirport;
+USE ChangiAirport;
 
 
 -- Create Table
