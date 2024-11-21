@@ -1,5 +1,7 @@
--- You may add the code for Q8, Q9, Q10 here
 -- Q1
+set SQL_SAFE_UPDATES = 0; -- Disable safe update mode
+delete from customer_support where category not in ('CONTACT', 'CANCEL', 'FEEDBACK', 'INVOICE', 'ORDER', 'PAYMENT', 'REFUND', 'SHIPPING');
+set SQL_SAFE_UPDATES = 1; -- Enable safe update mode
 select distinct category, count(*) as cnt from customer_support group by category;
 
 -- Q2 find tag Q and W
@@ -59,10 +61,81 @@ where substring(MonthFlown, 1, 3) not in ('Jun', 'Jul', 'Aug', 'Sep')
 group by Airline, Class
 );
 
-
-
-
-
+-- Q8 
+-- by rating 
+with Ratings as (
+    (
+    select 
+        Airline, 
+        TypeofTraveller,
+        'SeatComfort' as RatingType, 
+        sum(case when SeatComfort < 3 then 1 else 0 end) as Negative,
+        sum(case when SeatComfort = 3 then 1 else 0 end) as Neutral,
+        sum(case when SeatComfort > 3 then 1 else 0 end) as Positive
+    from airlines_reviews
+    group by Airline, TypeofTraveller
+    )
+    union all
+    (
+    select 
+        Airline, 
+        TypeofTraveller,
+        'StaffService' as RatingType, 
+        sum(case when StaffService < 3 then 1 else 0 end) as Negative,
+        sum(case when StaffService = 3 then 1 else 0 end) as Neutral,
+        sum(case when StaffService > 3 then 1 else 0 end) as Positive
+    from airlines_reviews
+    group by Airline, TypeofTraveller
+    )
+    union all
+    (
+    select 
+        Airline, 
+        TypeofTraveller,
+        'FoodnBeverages' as RatingType, 
+        sum(case when FoodnBeverages < 3 then 1 else 0 end) as Negative,
+        sum(case when FoodnBeverages = 3 then 1 else 0 end) as Neutral,
+        sum(case when FoodnBeverages > 3 then 1 else 0 end) as Positive
+    from airlines_reviews
+    group by Airline, TypeofTraveller
+    )
+    union all
+    (
+    select 
+        Airline, 
+        TypeofTraveller,
+        'InflightEntertainment' as RatingType, 
+        sum(case when InflightEntertainment < 3 then 1 else 0 end) as Negative,
+        sum(case when InflightEntertainment = 3 then 1 else 0 end) as Neutral,
+        sum(case when InflightEntertainment > 3 then 1 else 0 end) as Positive
+    from airlines_reviews
+    group by Airline, TypeofTraveller
+    )
+    union all
+    (
+    select 
+        Airline, 
+        TypeofTraveller,
+        'ValueForMoney' as RatingType, 
+        sum(case when ValueForMoney < 3 then 1 else 0 end) as Negative,
+        sum(case when ValueForMoney = 3 then 1 else 0 end) as Neutral,
+        sum(case when ValueForMoney > 3 then 1 else 0 end) as Positive
+    from airlines_reviews
+    group by Airline, TypeofTraveller
+    )
+)
+select 
+    Airline, 
+    TypeofTraveller, 
+    RatingType, 
+    Negative, 
+    Neutral, 
+    Positive, 
+    round(Negative * 100.0 / (Negative + Neutral + Positive), 2) as NegativePercentage,
+    round(Neutral * 100.0 / (Negative + Neutral + Positive), 2) as NeutralPercentage,
+    round(Positive * 100.0 / (Negative + Neutral + Positive), 2) as PositivePercentage
+from Ratings
+order by Airline, TypeofTraveller, RatingType;
 
 
 
@@ -250,83 +323,28 @@ WHERE Airline = 'Singapore Airlines'
 GROUP BY Period, TypeofTraveller;
 
 
-
-
-
-
-
 -- Q10
-with Ratings as (
-    (
-    select 
-        Airline, 
-        TypeofTraveller,
-        'SeatComfort' as RatingType, 
-        sum(case when SeatComfort < 3 then 1 else 0 end) as Negative,
-        sum(case when SeatComfort = 3 then 1 else 0 end) as Neutral,
-        sum(case when SeatComfort > 3 then 1 else 0 end) as Positive
-    from airlines_reviews
-    group by Airline, TypeofTraveller
-    )
-    union all
-    (
-    select 
-        Airline, 
-        TypeofTraveller,
-        'StaffService' as RatingType, 
-        sum(case when StaffService < 3 then 1 else 0 end) as Negative,
-        sum(case when StaffService = 3 then 1 else 0 end) as Neutral,
-        sum(case when StaffService > 3 then 1 else 0 end) as Positive
-    from airlines_reviews
-    group by Airline, TypeofTraveller
-    )
-    union all
-    (
-    select 
-        Airline, 
-        TypeofTraveller,
-        'FoodnBeverages' as RatingType, 
-        sum(case when FoodnBeverages < 3 then 1 else 0 end) as Negative,
-        sum(case when FoodnBeverages = 3 then 1 else 0 end) as Neutral,
-        sum(case when FoodnBeverages > 3 then 1 else 0 end) as Positive
-    from airlines_reviews
-    group by Airline, TypeofTraveller
-    )
-    union all
-    (
-    select 
-        Airline, 
-        TypeofTraveller,
-        'InflightEntertainment' as RatingType, 
-        sum(case when InflightEntertainment < 3 then 1 else 0 end) as Negative,
-        sum(case when InflightEntertainment = 3 then 1 else 0 end) as Neutral,
-        sum(case when InflightEntertainment > 3 then 1 else 0 end) as Positive
-    from airlines_reviews
-    group by Airline, TypeofTraveller
-    )
-    union all
-    (
-    select 
-        Airline, 
-        TypeofTraveller,
-        'ValueForMoney' as RatingType, 
-        sum(case when ValueForMoney < 3 then 1 else 0 end) as Negative,
-        sum(case when ValueForMoney = 3 then 1 else 0 end) as Neutral,
-        sum(case when ValueForMoney > 3 then 1 else 0 end) as Positive
-    from airlines_reviews
-    group by Airline, TypeofTraveller
-    )
-)
-select 
-    Airline, 
-    TypeofTraveller, 
-    RatingType, 
-    Negative, 
-    Neutral, 
-    Positive, 
-    round(Negative * 100.0 / (Negative + Neutral + Positive), 2) as NegativePercentage,
-    round(Neutral * 100.0 / (Negative + Neutral + Positive), 2) as NeutralPercentage,
-    round(Positive * 100.0 / (Negative + Neutral + Positive), 2) as PositivePercentage
-from Ratings
-order by Airline, TypeofTraveller, RatingType;
+-- clean data
+set SQL_SAFE_UPDATES = 0; -- Disable safe update mode
+DELETE FROM customer_support_with_tone WHERE category NOT IN ('CONTACT', 'CANCEL', 'FEEDBACK', 'INVOICE', 'ORDER', 'PAYMENT', 'REFUND', 'SHIPPING');
+set SQL_SAFE_UPDATES = 1; -- Enable safe update mode
 
+-- counting number of row in customer_support_with_tone
+SELECT count(*) FROM customer_support_with_tone;
+
+-- Percentage of Each Instruction Tone
+select tone_instruction as instruction_tone, count(*)/9074*100 as percentage from customer_support_with_tone group by tone_instruction order by percentage desc;
+
+-- Percentage of Each Response Tone
+select tone as response_tone, count(*)/9074*100 as percentage from customer_support_with_tone group by tone order by percentage desc;
+
+-- Responses that has fear tone
+select response from customer_support_with_tone where tone = 'fear' or 'sadness'; 
+
+-- Number of Instruction tone and Respond tone
+select tone_instruction as instruction_tone ,tone as response_tone,count(*) as cnt from customer_support_with_tone where tone_instruction in ('anger','neutral','sadness','surprise')
+group by tone,tone_instruction order by  tone_instruction, cnt desc;
+
+-- Response tone that has complaint intent
+select intent,tone as response_tone,count(*) as cnt from customer_support_with_tone where category = 'FEEDBACK' 
+group by intent,tone order by intent, cnt desc;
