@@ -162,6 +162,13 @@ update cleaned_reviews
 set complaints = "yes"
 where polarity <= 0;
 
+-- Check proportion of Verified -> quite a significant proportion, disregard this row
+select case when Verified = "TRUE" then "Verified" else "Non-Verified" end as Status, count(*) as Count,
+round(count(*)*100.0/sum(count(*)) over (), 2) as Proportion
+from cleaned_reviews
+where complaints = "yes"
+group by Status;
+
 -- dropping of irrelevant rows to achieve a focused dataset
 alter table cleaned_reviews
 drop column Name,
