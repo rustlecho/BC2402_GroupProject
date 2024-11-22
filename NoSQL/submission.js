@@ -865,15 +865,6 @@ db.cleaned_reviews.aggregate([
         }
     }
 ]);
-
- 
- 
- 
- 
- 
- 
- 
- 
  
  // When rating <= 2, considered as complaints (As a proportion of reviews) -- Group by BOTH Period and Class
  db.cleaned_reviews.aggregate([
