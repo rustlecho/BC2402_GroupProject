@@ -9,8 +9,10 @@ set SQL_SAFE_UPDATES = 1; -- Enable safe update mode
 select distinct category, count(*) as cnt from customer_support group by category;
 
 -- Q2 find tag Q and W
-select count(*) as cnt from customer_support
-where flags like '%Q%' and flags like '%W%';
+select distinct category, count(*) as count
+from customer_support
+where flags like '%Q%' and flags like '%W%'
+group by category;
 
 -- Q3
 -- for each airline, display the instances of cancellations and delays
