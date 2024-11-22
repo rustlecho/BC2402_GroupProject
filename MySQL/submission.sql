@@ -127,6 +127,47 @@ where substring(MonthFlown, 1, 3) not in ('Jun', 'Jul', 'Aug', 'Sep')
 group by Airline, Class
 );
 
+-- percentage differences in averages between non seasonal and seasonal periods
+WITH SeasonalData AS (
+    SELECT 
+        'Seasonal' AS Periods,
+        Airline, 
+        Class, 
+        AVG(SeatComfort) AS SeatComfortAvg,
+        AVG(FoodnBeverages) AS FoodnBeveragesAvg,
+        AVG(InflightEntertainment) AS InflightEntertainmentAvg,
+        AVG(ValueForMoney) AS ValueForMoneyAvg,
+        AVG(OverallRating) AS OverallRatingAvg
+    FROM airlines_reviews
+    WHERE SUBSTRING(MonthFlown, 1, 3) IN ('Jun', 'Jul', 'Aug', 'Sep')
+    GROUP BY Airline, Class
+),
+NonSeasonalData AS (
+    SELECT 
+        'Non-Seasonal' AS Periods,
+        Airline, 
+        Class, 
+        AVG(SeatComfort) AS SeatComfortAvg,
+        AVG(FoodnBeverages) AS FoodnBeveragesAvg,
+        AVG(InflightEntertainment) AS InflightEntertainmentAvg,
+        AVG(ValueForMoney) AS ValueForMoneyAvg,
+        AVG(OverallRating) AS OverallRatingAvg
+    FROM airlines_reviews
+    WHERE SUBSTRING(MonthFlown, 1, 3) NOT IN ('Jun', 'Jul', 'Aug', 'Sep')
+    GROUP BY Airline, Class
+)
+SELECT 
+    s.Airline, 
+    s.Class, 
+    ROUND(((s.SeatComfortAvg - n.SeatComfortAvg) / n.SeatComfortAvg) * 100, 2) AS SeatComfortDiffPercent,
+    ROUND(((s.FoodnBeveragesAvg - n.FoodnBeveragesAvg) / n.FoodnBeveragesAvg) * 100, 2) AS FoodnBeveragesDiffPercent,
+    ROUND(((s.InflightEntertainmentAvg - n.InflightEntertainmentAvg) / n.InflightEntertainmentAvg) * 100, 2) AS InflightEntertainmentDiffPercent,
+    ROUND(((s.ValueForMoneyAvg - n.ValueForMoneyAvg) / n.ValueForMoneyAvg) * 100, 2) AS ValueForMoneyDiffPercent,
+    ROUND(((s.OverallRatingAvg - n.OverallRatingAvg) / n.OverallRatingAvg) * 100, 2) AS OverallRatingDiffPercent
+FROM SeasonalData s
+JOIN NonSeasonalData n
+ON s.Airline = n.Airline AND s.Class = n.Class;
+
 -- Q8 
 -- Our initial approach to finding complaints before we analysed it to find its limitations
 select * 
