@@ -38,94 +38,80 @@ where rank_month=1
 order by Month;
 
 -- Q5
-WITH QuarterlyData AS (
+-- we took the average for low and high, and change is representted in percentage
+WITH YearQuarterData AS (
     SELECT 
-        QUARTER(STR_TO_DATE(StockDate, '%m/%d/%Y')) AS Quarter,
-        YEAR(STR_TO_DATE(StockDate, '%m/%d/%Y')) AS Year,
-        AVG(High) AS avgHigh,
-        AVG(Low) AS avgLow,
-        AVG((High + Low) / 2) AS AvgPrice
+        SUBSTRING(StockDate, 7, 4) AS Year,
+        CASE 
+            WHEN SUBSTRING(StockDate, 1, 2) IN ('01', '02', '03') THEN 1
+            WHEN SUBSTRING(StockDate, 1, 2) IN ('04', '05', '06') THEN 2
+            WHEN SUBSTRING(StockDate, 1, 2) IN ('07', '08', '09') THEN 3
+            ELSE 4
+        END AS Quarter,
+        StockDate,
+        High,
+        Low,
+        Price,
+        CONCAT(SUBSTRING(StockDate, 7, 4), '-', 
+               CASE 
+                   WHEN SUBSTRING(StockDate, 1, 2) IN ('01', '02', '03') THEN 1
+                   WHEN SUBSTRING(StockDate, 1, 2) IN ('04', '05', '06') THEN 2
+                   WHEN SUBSTRING(StockDate, 1, 2) IN ('07', '08', '09') THEN 3
+                   ELSE 4
+               END) AS YearQuarter
     FROM sia_stock
-    WHERE YEAR(STR_TO_DATE(StockDate, '%m/%d/%Y')) = 2023
-    GROUP BY Year, Quarter
 ),
-QuarterlyChanges AS (
-    SELECT 
-        q1.Quarter AS CurrentQuarter,
-        q1.avgHigh AS CurrentHigh,
-        q1.avgLow AS CurrentLow,
-        q1.AvgPrice AS CurrentAvgPrice,
-        CASE 
-            WHEN q0.avgHigh IS NOT NULL THEN ROUND(((q1.avgHigh - q0.avgHigh) / q0.avgHigh) * 100, 2)
-            ELSE NULL
-        END AS HighChangePercent,
-        CASE 
-            WHEN q0.avgLow IS NOT NULL THEN ROUND(((q1.avgLow - q0.avgLow) / q0.avgLow) * 100, 2)
-            ELSE NULL
-        END AS LowChangePercent,
-        CASE 
-            WHEN q0.AvgPrice IS NOT NULL THEN ROUND(((q1.AvgPrice - q0.AvgPrice) / q0.AvgPrice) * 100, 2)
-            ELSE NULL
-        END AS AvgPriceChangePercent
-    FROM QuarterlyData q1
-    LEFT JOIN QuarterlyData q0
-    ON q1.Quarter = q0.Quarter + 1
-)
-SELECT 
-    CurrentQuarter,
-    ROUND(CurrentHigh, 2) AS HighPrice,
-    ROUND(CurrentLow, 2) AS LowPrice,
-    ROUND(CurrentAvgPrice, 2) AS AveragePrice,
-    HighChangePercent AS HighChangePercent,
-    LowChangePercent AS LowChangePercent,
-    AvgPriceChangePercent AS AvgPriceChangePercent
-FROM QuarterlyChanges
-ORDER BY CurrentQuarter;
 
--- just the percentage
-WITH QuarterlyData AS (
-    SELECT 
-        QUARTER(STR_TO_DATE(StockDate, '%m/%d/%Y')) AS Quarter,
-        YEAR(STR_TO_DATE(StockDate, '%m/%d/%Y')) AS Year,
-        AVG(High) AS avgHigh,
-        AVG(Low) AS avgLow,
-        AVG((High + Low) / 2) AS AvgPrice
-    FROM sia_stock
-    WHERE YEAR(STR_TO_DATE(StockDate, '%m/%d/%Y')) IN (2022, 2023)  -- Consider both 2022 and 2023
-    GROUP BY Year, Quarter
+GroupedData AS (
+    SELECT
+        YearQuarter,
+        Year,
+        Quarter,
+        AVG(High) AS quarter_end_High,
+        AVG(Low) AS quarter_end_Low,
+        AVG(Price) AS quarter_avg
+    FROM YearQuarterData
+    GROUP BY YearQuarter, Year, Quarter
 ),
+
 QuarterlyChanges AS (
     SELECT 
-        q1.Year,
-        q1.Quarter,
-        ROUND(
-            ((q1.avgHigh - COALESCE(q2.avgHigh, q1.avgHigh)) / COALESCE(q2.avgHigh, q1.avgHigh)) * 100, 
-            2
-        ) AS QoQ_High_Change_Perc,
-        ROUND(
-            ((q1.avgLow - COALESCE(q2.avgLow, q1.avgLow)) / COALESCE(q2.avgLow, q1.avgLow)) * 100, 
-            2
-        ) AS QoQ_Low_Change_Perc,
-        ROUND(
-            ((q1.AvgPrice - COALESCE(q2.AvgPrice, q1.AvgPrice)) / COALESCE(q2.AvgPrice, q1.AvgPrice)) * 100, 
-            2
-        ) AS QoQ_Avg_Change_Perc
-    FROM QuarterlyData q1
-    LEFT JOIN QuarterlyData q2
-        ON (q1.Year = q2.Year AND q1.Quarter = q2.Quarter + 1)  -- Join to get the previous quarter's data
-    WHERE 
-        (q1.Year = 2023 AND q1.Quarter = 1 AND q2.Year = 2022 AND q2.Quarter = 4)  -- Compare Q1 2023 with Q4 2022
-    OR 
-        (q1.Year = 2023 AND q1.Quarter > 1)  -- Compare Q2 to Q4 of 2023 with previous quarters
+        YearQuarter,
+        Year,
+        Quarter,
+        quarter_end_High,
+        quarter_end_Low,
+        quarter_avg,
+        LAG(quarter_end_High) OVER (ORDER BY YearQuarter) AS previous_quarter_high,
+        LAG(quarter_end_Low) OVER (ORDER BY YearQuarter) AS previous_quarter_low,
+        LAG(quarter_avg) OVER (ORDER BY YearQuarter) AS previous_quarter_avg
+    FROM GroupedData
 )
+
+-- calculate the percentage changes 
 SELECT 
-    Year,
-    Quarter,
-    CONCAT(QoQ_High_Change_Perc, '%') AS QoQ_High_Change_Perc,
-    CONCAT(QoQ_Low_Change_Perc, '%') AS QoQ_Low_Change_Perc,
-    CONCAT(QoQ_Avg_Change_Perc, '%') AS QoQ_Avg_Change_Perc
+    YearQuarter,
+    ROUND(quarter_end_High,2),
+    ROUND(quarter_end_Low,2),
+    ROUND(quarter_avg,2),
+    CASE 
+        WHEN previous_quarter_high IS NOT NULL AND previous_quarter_high != 0 
+        THEN ROUND(((quarter_end_High - previous_quarter_high) / previous_quarter_high) * 100,2)
+        ELSE NULL
+    END AS QoQ_high_change,
+    CASE 
+        WHEN previous_quarter_low IS NOT NULL AND previous_quarter_low != 0 
+        THEN ROUND(((quarter_end_Low - previous_quarter_low) / previous_quarter_low) * 100,2)
+        ELSE NULL
+    END AS QoQ_low_change,
+    CASE 
+        WHEN previous_quarter_avg IS NOT NULL AND previous_quarter_avg != 0 
+        THEN ROUND(((quarter_avg - previous_quarter_avg) / previous_quarter_avg) * 100,2)
+        ELSE NULL
+    END AS QoQ_avg_change
 FROM QuarterlyChanges
-ORDER BY Year, Quarter;
+WHERE Year = '2023'
+ORDER BY YearQuarter;
 
 
 -- Using flight duration.
