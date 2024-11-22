@@ -25,20 +25,9 @@ where (Month, Cnt) in (
 
 -- Q5
 
--- Q6
-select count(distinct route) from customer_booking;
-select 
-	sales_channel, route, 
-    avg(length_of_stay) / avg(flight_hour),
-    avg(wants_extra_baggage) / avg(flight_hour),
-    avg(wants_preferred_seat) / avg(flight_hour),
-    avg(wants_in_flight_meals) / avg(flight_hour)
-from customer_booking
-group by sales_channel, route;
-
 
 -- Using flight duration.
-# Q6
+-- Q6
 -- First checked the data for NUll values and rows to be cleaned. Dataset was already clean with no NULL values or values needing to be removed.
 
 -- Average rations requested by the Question.
