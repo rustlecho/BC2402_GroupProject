@@ -605,7 +605,8 @@ GROUP BY Period, Verified;
 
 
 
--- Analyse Changes in Ratings and Number of Reviews Pre and Post COVID Across Months --> Data exported for visualization
+-- Analyse Changes in Ratings and Number of Reviews Pre and Post COVID Across Months --> Data exported as "results_explore.csv" 
+-- for high-level visualization. Please refer to Appendix K in the report for more information.
 SELECT 
     MonthFlown, 
     CASE 
