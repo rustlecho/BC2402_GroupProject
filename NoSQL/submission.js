@@ -26,7 +26,58 @@ db.customer_support.aggregate([
 
 // Q3 
 
-
+db.flight_delay.aggregate([
+  {
+    $match: {
+      Cancelled: 1
+    }
+  },
+  {
+    $group: {
+      _id: "$Airline",
+      Status: { $first: "Cancelled" }, 
+      count: { $sum: 1 }
+    }
+  },
+  {
+    $unionWith: {
+      coll: "flight_delay",
+      pipeline: [
+        {
+          $match: {
+            $or: [
+              { ArrDelay: { $ne: 0 } },
+              { DepDelay: { $ne: 0 } },
+              { CarrierDelay: { $ne: 0 } },
+              { WeatherDelay: { $ne: 0 } },
+              { NASDelay: { $ne: 0 } },
+              { SecurityDelay: { $ne: 0 } },
+              { LateAircraftDelay: { $ne: 0 } }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: "$Airline",
+            Status: { $first: "Delayed" },  
+            count: { $sum: 1 }
+          }
+        }
+      ]
+    }
+  },
+  {
+    $project: {
+      Airline: "$_id",
+      Status: 1,
+      count: 1,
+      _id: 0
+    }
+  },
+  {
+    $sort: { Airline: 1 }
+  }
+]);
 
 
 //Q4 
