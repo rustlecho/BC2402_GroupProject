@@ -39,6 +39,7 @@ order by Month;
 
 -- Q5
 -- we took the average for low and high, and change is representted in percentage
+
 WITH YearQuarterData AS (
     SELECT 
         SUBSTRING(StockDate, 7, 4) AS Year,
@@ -61,7 +62,7 @@ WITH YearQuarterData AS (
                END) AS YearQuarter
     FROM sia_stock
 ),
-
+-- group by high and low prices
 GroupedData AS (
     SELECT
         YearQuarter,
@@ -88,12 +89,12 @@ QuarterlyChanges AS (
     FROM GroupedData
 )
 
--- calculate the percentage changes 
+-- calculate the percentage changes a
 SELECT 
     YearQuarter,
-    ROUND(quarter_end_High,2),
-    ROUND(quarter_end_Low,2),
-    ROUND(quarter_avg,2),
+    ROUND(quarter_end_High,2) as quarter_end_High,
+    ROUND(quarter_end_Low,2) as quarter_end_Low,
+    ROUND(quarter_avg,2) as quarter_avg,
     CASE 
         WHEN previous_quarter_high IS NOT NULL AND previous_quarter_high != 0 
         THEN ROUND(((quarter_end_High - previous_quarter_high) / previous_quarter_high) * 100,2)
