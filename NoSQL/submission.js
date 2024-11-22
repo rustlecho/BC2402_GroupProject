@@ -82,10 +82,9 @@ db.flight_delay.aggregate([
 
 //Q4 
 db.flight_delay.aggregate([
-    // Step 1: Add Month field by extracting from Date, and count ArrDelay occurrences by Month, Origin, and Dest
     {
       $addFields: {
-        Month: { $substr: ["$Date", 3, 2] }  // Extract month part (characters at index 3 and 4)
+        Month: { $substr: ["$Date", 3, 2] }  
       }
     },
     {
@@ -103,8 +102,6 @@ db.flight_delay.aggregate([
         _id: 0
       }
     },
-    
-    // Step 2: Store max Cnt per Month in an array
     {
       $group: {
         _id: "$Month",
@@ -112,8 +109,6 @@ db.flight_delay.aggregate([
         entries: { $push: { Origin: "$Origin", Dest: "$Dest", Cnt: "$Cnt" } }
       }
     },
-    
-    // Step 3: Unwind the entries array and filter to retain only records with max Cnt
     {
       $unwind: "$entries"
     },
@@ -122,8 +117,6 @@ db.flight_delay.aggregate([
         $expr: { $eq: ["$entries.Cnt", "$maxCnt"] }
       }
     },
-    
-    // Step 4: Project the final result with Month, Origin, Dest, and Cnt
     {
       $project: {
         Month: "$_id",
@@ -136,6 +129,136 @@ db.flight_delay.aggregate([
   ]);
 
   //Q5 
+db.sia_stock.aggregate([
+    {
+        $addFields: {
+            Year: { $substr: ["$StockDate", 6, 4] },
+            Quarter: {
+                "$switch": {
+                    branches: [
+                        { case: { $in: [{ $substr: ["$StockDate", 0, 2] }, ["01", "02", "03"]] }, then: 1 },
+                        { case: { $in: [{ $substr: ["$StockDate", 0, 2] }, ["04", "05", "06"]] }, then: 2 },
+                        { case: { $in: [{ $substr: ["$StockDate", 0, 2] }, ["07", "08", "09"]] }, then: 3 }
+                    ],
+                    default: 4
+                }
+            }
+        }
+    },
+    {
+        $addFields: {
+            YearQuarter: {
+                $concat: [
+                    "$Year", "-",
+                    { $toString: "$Quarter" }
+                ]
+            }
+        }
+    },
+    {
+        $group: {
+            _id: { YearQuarter: "$YearQuarter", Year: "$Year", Quarter: "$Quarter" },
+            quarter_end_High: { $avg: "$High" },
+            quarter_end_Low: { $avg: "$Low" },
+            quarter_avg: { $avg: "$Price" }
+        }
+    },
+    {
+        $sort: { "_id.YearQuarter": 1 }
+    },
+    {
+        $setWindowFields: {
+            sortBy: { "_id.YearQuarter": 1 },
+            output: {
+                previous_quarter_high: {
+                    $shift: { output: "$quarter_end_High", by: -1 }
+                },
+                previous_quarter_low: {
+                    $shift: { output: "$quarter_end_Low", by: -1 }
+                },
+                previous_quarter_avg: {
+                    $shift: { output: "$quarter_avg", by: -1 }
+                }
+            }
+        }
+    },
+    {
+        $addFields: {
+            QoQ_high_change: {
+                $cond: {
+                    if: {
+                        $and: [
+                            { $ne: ["$previous_quarter_high", null] },
+                            { $ne: ["$previous_quarter_high", 0] }
+                        ]
+                    },
+                    then: {
+                        $multiply: [
+                            { $divide: [
+                                { $subtract: ["$quarter_end_High", "$previous_quarter_high"] },
+                                "$previous_quarter_high"
+                            ] },
+                            100
+                        ]
+                    },
+                    else: null
+                }
+            },
+            QoQ_low_change: {
+                $cond: {
+                    if: {
+                        $and: [
+                            { $ne: ["$previous_quarter_low", null] },
+                            { $ne: ["$previous_quarter_low", 0] }
+                        ]
+                    },
+                    then: {
+                        $multiply: [
+                            { $divide: [
+                                { $subtract: ["$quarter_end_Low", "$previous_quarter_low"] },
+                                "$previous_quarter_low"
+                            ] },
+                            100
+                        ]
+                    },
+                    else: null
+                }
+            },
+            QoQ_avg_change: {
+                $cond: {
+                    if: {
+                        $and: [
+                            { $ne: ["$previous_quarter_avg", null] },
+                            { $ne: ["$previous_quarter_avg", 0] }
+                        ]
+                    },
+                    then: {
+                        $multiply: [
+                            { $divide: [
+                                { $subtract: ["$quarter_avg", "$previous_quarter_avg"] },
+                                "$previous_quarter_avg"
+                            ] },
+                            100
+                        ]
+                    },
+                    else: null
+                }
+            }
+        }
+    },
+    {$match: {"_id.Year" : "2023"}},
+    {
+        $project: {
+            "quarter_end_High": 1,
+            "quarter_end_Low": 1,
+            "quarter_avg": 1,
+            "QoQ_high_change": 1,
+            "QoQ_low_change": 1,
+            "QoQ_avg_change": 1
+        }
+    }
+]);
+
 
   //Q6
 
