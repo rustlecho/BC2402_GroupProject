@@ -1,4 +1,8 @@
 -- Q1
+-- initially, 36 categories
+select distinct category
+from customer_support;
+
 set SQL_SAFE_UPDATES = 0; -- Disable safe update mode
 delete from customer_support where category not in ('CONTACT', 'CANCEL', 'FEEDBACK', 'INVOICE', 'ORDER', 'PAYMENT', 'REFUND', 'SHIPPING');
 set SQL_SAFE_UPDATES = 1; -- Enable safe update mode
@@ -9,19 +13,29 @@ select count(*) as cnt from customer_support
 where flags like '%Q%' and flags like '%W%';
 
 -- Q3
+-- for each airline, display the instances of cancellations and delays
+select Airline, 'Cancelled' as Status, count(*) as count
+from flight_delay
+where Cancelled=1 
+group by airline
+union
+select Airline, 'Delayed' as Status, count(*) as count
+from flight_delay
+where ArrDelay!=0 or DepDelay!=0 or CarrierDelay!=0 or WeatherDelay!=0 or NASDelay!=0 or SecurityDelay!=0 or LateAircraftDelay!=0
+group by airline;
 
 -- Q4
-with mdelay as (
-	select substring(Date, 4, 2) as Month, Origin, Dest, count(ArrDelay) as Cnt
-    from flight_delay
-    where ArrDelay > 0
-	group by Month, Origin, Dest
-)
-select Month, Origin, Dest, Cnt from mdelay
-where (Month, Cnt) in (
-	select Month, max(Cnt) from mdelay
-    group by Month
-);
+with delay_instance as 
+	(select substring(Date, 4,2) as Month, Org_Airport, Dest_Airport, count(Org_Airport) as Num_Instances, 
+    row_number() over (partition by substring(Date, 4,2)
+    order by count(Org_Airport) desc) as rank_month
+	from flight_delay
+	where ArrDelay!=0 or DepDelay!=0 or CarrierDelay!=0 or WeatherDelay!=0 or NASDelay!=0 or SecurityDelay!=0 or LateAircraftDelay!=0
+	group by Month, Org_Airport, Dest_Airport) 
+select Month, Org_Airport, Dest_Airport, Num_Instances
+from delay_instance
+where rank_month=1
+order by Month;
 
 -- Q5
 
