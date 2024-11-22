@@ -46,6 +46,93 @@ select
 from customer_booking
 group by sales_channel, route;
 
+
+-- Using flight duration.
+# Q6
+-- First checked the data for NUll values and rows to be cleaned. Dataset was already clean with no NULL values or values needing to be removed.
+
+-- Average rations requested by the Question.
+select
+	sales_channel,
+    route,
+    avg(wants_extra_baggage) / avg(flight_duration) as avg_wants_extra_baggage_per_flight_hour,
+    avg(wants_in_flight_meals) / avg(flight_duration) as avg_wants_in_flight_meals_per_flight_hour,
+    avg(length_of_stay) / avg(flight_duration) as avg_length_of_stay_per_flight_hour,
+    avg(wants_preferred_seat) / avg(flight_duration) as avg_wants_preferred_seat_per_flight_hour
+from customer_booking
+group by sales_channel, route;
+
+-- Overall Average ratios with no group by.
+SELECT
+    AVG(wants_extra_baggage) / AVG(flight_duration) AS avg_wants_extra_baggage_per_flight_hour,
+    AVG(wants_in_flight_meals) / AVG(flight_duration) AS avg_wants_in_flight_meals_per_flight_hour,
+    AVG(length_of_stay) / AVG(flight_duration) AS avg_length_of_stay_per_flight_hour,
+    AVG(wants_preferred_seat) / AVG(flight_duration) AS avg_wants_preferred_seat_per_flight_hour
+FROM customer_booking;
+
+-- Ratios grouped by Sales Channel only.
+SELECT
+    sales_channel,
+    AVG(wants_extra_baggage) / AVG(flight_duration) AS avg_wants_extra_baggage_per_flight_hour,
+    AVG(wants_in_flight_meals) / AVG(flight_duration) AS avg_wants_in_flight_meals_per_flight_hour,
+    AVG(length_of_stay) / AVG(flight_duration) AS avg_length_of_stay_per_flight_hour,
+    AVG(wants_preferred_seat) / AVG(flight_duration) AS avg_wants_preferred_seat_per_flight_hour
+FROM customer_booking
+GROUP BY sales_channel;
+
+-- Statistical distribution of flight_duration.
+SELECT
+    AVG(flight_duration) AS mean_flight_duration,
+    MIN(flight_duration) AS min_flight_duration,
+    MAX(flight_duration) AS max_flight_duration,
+    STD(flight_duration) AS std_dev_flight_duration,
+    COUNT(flight_duration) AS total_flights
+FROM customer_booking;
+
+-- Variables split by Short and Long flights.
+SELECT 
+    CASE 
+        WHEN flight_duration <= 7 THEN 'Short Flights'
+        WHEN flight_duration > 7 THEN 'Long Flights'
+    END AS flight_segment,
+    AVG(wants_extra_baggage) AS avg_extra_baggage,
+    AVG(wants_preferred_seat) AS avg_preferred_seat,
+    AVG(wants_in_flight_meals) AS avg_in_flight_meals,
+    AVG(length_of_stay) AS avg_length_of_stay
+FROM customer_booking
+GROUP BY flight_segment;
+
+-- Meal preference rattio split by flight hour
+SELECT 
+    ROUND(flight_duration, 0) AS rounded_flight_duration,
+    SUM(wants_in_flight_meals) AS total_meals,
+    COUNT(*) AS total_flights,
+    SUM(wants_in_flight_meals) / COUNT(*) AS meal_preference_ratio
+FROM customer_booking
+GROUP BY rounded_flight_duration
+ORDER BY rounded_flight_duration;
+
+-- Overall rations split by flight duration.
+SELECT 
+    ROUND(flight_duration, 0) AS rounded_flight_duration,
+    AVG(wants_extra_baggage) AS avg_extra_baggage_preference,
+    AVG(wants_preferred_seat) AS avg_preferred_seat_preference,
+    AVG(wants_in_flight_meals) AS avg_in_flight_meal_preference,
+    AVG(length_of_stay) AS avg_length_of_stay
+FROM customer_booking
+GROUP BY rounded_flight_duration
+ORDER BY rounded_flight_duration;
+
+-- Correlation of Length of stay and Flight Duration
+SELECT 
+    (AVG((flight_duration - (SELECT AVG(flight_duration) FROM customer_booking)) *
+         (length_of_stay - (SELECT AVG(length_of_stay) FROM customer_booking))) /
+    (SQRT(
+        AVG(POW(flight_duration - (SELECT AVG(flight_duration) FROM customer_booking), 2)) *
+        AVG(POW(length_of_stay - (SELECT AVG(length_of_stay) FROM customer_booking), 2))
+    ))) AS correlation_flight_duration_length_of_stay
+FROM customer_booking;
+
 -- Q7
 (
 select 'Seasonal' as Periods, Airline, Class, avg(SeatComfort), avg(FoodnBeverages), avg(InflightEntertainment), avg(ValueForMoney), avg(OverallRating)
