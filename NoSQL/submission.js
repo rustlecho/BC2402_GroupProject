@@ -427,6 +427,268 @@ db.airlines_reviews.aggregate([
 
 // Q8 
 
+//Initial method of using recommendations and OverallRating
+db.airlines_reviews.find({$or:[{"OverallRating":{$elemMatch: {$lte:5}}}, 
+    {"Recommended":"no"}]})
+// after adding the json file to collection, we did keyword extraction on the title for complaint columns
+db.cleaned_reviews.aggregate([
+     { 
+    $match: { "complaints": "yes" } 
+  },
+  { $project: { words: { $split: [ { $toLower: "$Title" }, " " ] } } },
+  { $unwind: "$words" },
+  { $match: { words: { $nin: ["down","as","too","felt","up","their","them","than","they", "have","are","us","by","that","this","it","not","very","no","me","at","has","an","the", "is", "and", "in", "to", "a", "of", "with", "was", "i", "", "on", "for", "my", "were", "we"] } } },
+  { $group: { _id: "$words", count: { $sum: 1 } } },
+  { $sort: { count: -1 } },
+  { $limit: 100 }
+]);
+
+// full-text search for reviews - common complaints 
+db.cleaned_reviews.createIndex({ "Reviews": "text" });
+//delay
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:"delay late"}}},
+    {$match: { "complaints": "yes" } },
+    { 
+    $group: {"_id":0,
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+//food
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:" tasteless food meal"}}},
+    {$match: { "complaints": "yes" } },
+    { 
+        $group: {"_id":0,
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+//service
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:" service "}}},
+    {$match: { "complaints": "yes" } }, 
+    { 
+       $group: {"_id":0,
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+//seat
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:" seat uncomfortable seats seating"}}},
+    {$match: { "complaints": "yes" } },
+    { 
+       $group: {"_id":0,
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+//entertainemnt
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:" entertainment "}}},
+    {$match: { "complaints": "yes" } },
+    { 
+       $group: {"_id":0,
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+//compensation
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:" compensation refund "}}},
+    {$match: { "complaints": "yes" } },
+    { 
+        $group: {"_id":0,
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+//baggage
+  db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:" baggage luggage "}}},
+    {$match: { "complaints": "yes" } },
+    { 
+        $group: {"_id":0,
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+//Top 5 issues for each airline and type of traveller
+//delay
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:"delay late"}}},
+    {$match: { "complaints": "yes" } },
+    { 
+    $group: {
+      _id: { 
+        airline: "$Airline", 
+        typeofTraveller: "$TypeofTraveller"
+      },
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+//food
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:" tasteless food meal"}}},
+    {$match: { "complaints": "yes" } },
+    { 
+    $group: {
+      _id: { 
+        airline: "$Airline", 
+        typeofTraveller: "$TypeofTraveller"
+      },
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+//service
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:" service "}}},
+    {$match: { "complaints": "yes" } },
+    { 
+    $group: {
+      _id: { 
+        airline: "$Airline", 
+        typeofTraveller: "$TypeofTraveller"
+      },
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+  //seat
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:" seat uncomfortable "}}},
+    {$match: { "complaints": "yes" } },
+    { 
+    $group: {
+      _id: { 
+        airline: "$Airline", 
+        typeofTraveller: "$TypeofTraveller"
+      },
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+ //entertainemnt
+db.cleaned_reviews.aggregate([ 
+    {$match:{$text:{$search:" entertainment "}}},
+    {$match: { "complaints": "yes" } },
+    { 
+    $group: {
+      _id: { 
+        airline: "$Airline", 
+        typeofTraveller: "$TypeofTraveller"
+      },
+      count: { $sum: 1 }
+    }
+  }
+  ])
+
+//compensation
+db.cleaned_reviews.aggregate([ 
+  {$match:{$text:{$search:" compensation refund "}}},
+  {$match: { "complaints": "yes" } },
+  { 
+  $group: {
+    _id: { 
+      airline: "$Airline", 
+      typeofTraveller: "$TypeofTraveller"
+    },
+    count: { $sum: 1 }
+  }
+}
+])
+
+ //baggage
+db.cleaned_reviews.aggregate([ 
+  {$match:{$text:{$search:" baggage luggage "}}},
+  {$match: { "complaints": "yes" } },
+  { 
+  $group: {
+    _id: { 
+      airline: "$Airline", 
+      typeofTraveller: "$TypeofTraveller"
+    },
+    count: { $sum: 1 }
+  }
+}
+])
+
 // Q9 
 
 // Q10 
+//use associated words to denote exceptional circumstances
+db.cleaned_reviews.updateMany({ $text: { $search: "delay miss late weather condition prevent disaster strikes security restrictions defects  typhoon wind turbulence control unrest" } , Airline: "Singapore Airlines", "complaints":"yes"}, {$set:{"exceptional":true}})
+
+//find the issues with exceptional circumstances
+db.cleaned_reviews.aggregate([
+  {
+    $match: {
+      "exceptional":true,
+      Airline: "Singapore Airlines",
+     "complaints":"yes"
+    }
+  },
+  { $project: { words: { $split: [ { $toLower: "$Title" }, " " ] } } },
+  { $unwind: "$words" },
+  { $match: { words: { $nin: ["down","as","too","felt","up","their","them","than","they", "have","are","us","by","that","this","it","not","very","no","me","at","has","an","the", "is", "and", "in", "to", "a", "of", "with", "was", "i", "", "on", "for", "my", "were", "we"] } } },
+  {
+    $group: {
+      _id: "$words",
+      count: { $sum: 1 }
+    }
+  },
+  {
+    $sort: {
+      count: -1
+    }
+  },
+  {
+    $limit: 100
+  }
+]);
+
+//find significance of each issue
+//compensation
+db.cleaned_reviews.aggregate([ 
+  {$match:{$text:{$search:" compensation refund  remunerate pay"}}},
+  {$match: { "complaints": "yes","exceptional":true ,Airline: "Singapore Airlines"}},
+  { 
+  $group: {"_id":0,
+    count: { $sum: 1 }
+  }
+}])
+
+//communication
+db.cleaned_reviews.aggregate([ 
+  {$match:{$text:{$search:" communication information customer"}}},
+  {$match: { "complaints": "yes","exceptional":true ,Airline: "Singapore Airlines"}},
+  { 
+  $group: {"_id":0,
+    count: { $sum: 1 }
+  }
+}])
+
+//delay
+db.cleaned_reviews.aggregate([ 
+  {$match:{$text:{$search:" late delay"}}},
+  {$match: { "complaints": "yes","exceptional":true ,Airline: "Singapore Airlines"}},
+  { 
+  $group: {"_id":0,
+    count: { $sum: 1 }
+  }
+}])
