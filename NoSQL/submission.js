@@ -803,6 +803,383 @@ db.cleaned_reviews.aggregate([
 ])
 
 // Q9 
+// When rating <= 2, considered as complaints (As a proportion of reviews)
+ 
+ db.cleaned_reviews.aggregate([
+    { 
+        $match: { 
+            Airline: "Singapore Airlines" 
+        } 
+    },
+    
+    { 
+        $addFields: { 
+            MonthFlownParts: { $split: ["$MonthFlown", "-"] } 
+        }
+    },
+    
+    { 
+        $addFields: { 
+            MonthFlownFull: {
+                $concat: [
+                    "01-",                // Placeholder day
+                    { $arrayElemAt: ["$MonthFlownParts", 0] },  // Month part
+                    "-20",                // Century prefix
+                    { $arrayElemAt: ["$MonthFlownParts", 1] }   // Year part
+                ]
+            }
+        }
+    },
+    
+    { 
+        $addFields: { 
+            COVID_Period: { 
+                $cond: [
+                    { $lt: [ { $dateFromString: { dateString: "$MonthFlownFull", format: "%d-%b-%Y" } }, ISODate("2020-03-01") ] },
+                    "Pre-COVID",
+                    "Post-COVID"
+                ] 
+            }
+        } 
+    },
+    
+    { 
+        $group: {
+            _id: "$COVID_Period",
+            TotalCount: { $sum: 1 },
+            SeatComfortComplaints: { $sum: { $cond: [ { $lte: ["$SeatComfort", 2] }, 1, 0 ] } },
+            StaffServiceComplaints: { $sum: { $cond: [ { $lte: ["$StaffService", 2] }, 1, 0 ] } },
+            FoodComplaints: { $sum: { $cond: [ { $lte: ["$FoodnBeverages", 2] }, 1, 0 ] } },
+            EntertainmentComplaints: { $sum: { $cond: [ { $lte: ["$InflightEntertainment", 2] }, 1, 0 ] } },
+            ValueComplaints: { $sum: { $cond: [ { $lte: ["$ValueForMoney", 2] }, 1, 0 ] } },
+        }
+    },
+    
+    { 
+        $project: {
+            SeatComfortComplaintRate: { $round: [ { $multiply: [ { $divide: ["$SeatComfortComplaints", "$TotalCount"] }, 100 ] }, 2 ] },
+            StaffServiceComplaintRate: { $round: [ { $multiply: [ { $divide: ["$StaffServiceComplaints", "$TotalCount"] }, 100 ] }, 2 ] },
+            FoodComplaintRate: { $round: [ { $multiply: [ { $divide: ["$FoodComplaints", "$TotalCount"] }, 100 ] }, 2 ] },
+            EntertainmentComplaintRate: { $round: [ { $multiply: [ { $divide: ["$EntertainmentComplaints", "$TotalCount"] }, 100 ] }, 2 ] },
+            ValueComplaintRate: { $round: [ { $multiply: [ { $divide: ["$ValueComplaints", "$TotalCount"] }, 100 ] }, 2 ] }
+        }
+    }
+]);
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ // When rating <= 2, considered as complaints (As a proportion of reviews) -- Group by BOTH Period and Class
+ db.cleaned_reviews.aggregate([
+    { 
+        $match: { 
+            Airline: "Singapore Airlines" 
+        } 
+    },
+    
+    { 
+        $addFields: { 
+            MonthFlownParts: { $split: ["$MonthFlown", "-"] } 
+        }
+    },
+    
+    { 
+        $addFields: { 
+            MonthFlownFull: {
+                $concat: [
+                    "01-",               
+                    { $arrayElemAt: ["$MonthFlownParts", 0] }, 
+                    "-20",               
+                    { $arrayElemAt: ["$MonthFlownParts", 1] }   
+                ]
+            }
+        }
+    },
+    
+    { 
+        $addFields: { 
+            COVID_Period: { 
+                $cond: [
+                    { $lt: [ { $dateFromString: { dateString: "$MonthFlownFull", format: "%d-%b-%Y" } }, ISODate("2020-03-01") ] },
+                    "Pre-COVID",
+                    "Post-COVID"
+                ] 
+            }
+        } 
+    },
+    
+    { 
+        $group: {
+            _id: { Period: "$COVID_Period", Class: "$Class" },
+            TotalCount: { $sum: 1 },
+            SeatComfortComplaints: { $sum: { $cond: [ { $lte: ["$SeatComfort", 2] }, 1, 0 ] } },
+            StaffServiceComplaints: { $sum: { $cond: [ { $lte: ["$StaffService", 2] }, 1, 0 ] } },
+            FoodComplaints: { $sum: { $cond: [ { $lte: ["$FoodnBeverages", 2] }, 1, 0 ] } },
+            EntertainmentComplaints: { $sum: { $cond: [ { $lte: ["$InflightEntertainment", 2] }, 1, 0 ] } },
+            ValueComplaints: { $sum: { $cond: [ { $lte: ["$ValueForMoney", 2] }, 1, 0 ] } },
+        }
+    },
+    
+    { 
+        $project: {
+            TotalCount: 1,
+            SeatComfortComplaintRate: { $round: [ { $multiply: [ { $divide: ["$SeatComfortComplaints", "$TotalCount"] }, 100 ] }, 2 ] },
+            StaffServiceComplaintRate: { $round: [ { $multiply: [ { $divide: ["$StaffServiceComplaints", "$TotalCount"] }, 100 ] }, 2 ] },
+            FoodComplaintRate: { $round: [ { $multiply: [ { $divide: ["$FoodComplaints", "$TotalCount"] }, 100 ] }, 2 ] },
+            EntertainmentComplaintRate: { $round: [ { $multiply: [ { $divide: ["$EntertainmentComplaints", "$TotalCount"] }, 100 ] }, 2 ] },
+            ValueComplaintRate: { $round: [ { $multiply: [ { $divide: ["$ValueComplaints", "$TotalCount"] }, 100 ] }, 2 ] }
+        }
+    }
+]);
+
+//Average ratings split
+
+db.cleaned_reviews.aggregate([
+    { 
+        $match: { 
+            Airline: "Singapore Airlines" 
+        } 
+    },
+    
+    { 
+        $addFields: { 
+            MonthFlownParts: { $split: ["$MonthFlown", "-"] } 
+        }
+    },
+    
+    { 
+        $addFields: { 
+            MonthFlownFull: {
+                $concat: [
+                    "01-",               
+                    { $arrayElemAt: ["$MonthFlownParts", 0] }, 
+                    "-20",               
+                    { $arrayElemAt: ["$MonthFlownParts", 1] }   
+                ]
+            }
+        }
+    },
+    
+    { 
+        $addFields: { 
+            COVID_Period: { 
+                $cond: [
+                    { $lt: [ { $dateFromString: { dateString: "$MonthFlownFull", format: "%d-%b-%Y" } }, ISODate("2020-03-01") ] },
+                    "Pre-COVID",
+                    "Post-COVID"
+                ] 
+            }
+        } 
+    },
+    
+    { 
+        $group: {
+            _id: "$COVID_Period",
+            Avg_SeatComfort: { $avg: "$SeatComfort" },
+            Avg_StaffService: { $avg: "$StaffService" },
+            Avg_FoodnBeverages: { $avg: "$FoodnBeverages" },
+            Avg_InflightEntertainment: { $avg: "$InflightEntertainment" },
+            Avg_ValueForMoney: { $avg: "$ValueForMoney" },
+            Avg_OverallRating: { $avg: "$OverallRating" }
+        }
+    },
+    
+    { 
+        $project: {
+            _id: 0,
+            Period: "$_id",
+            Avg_SeatComfort: { $round: ["$Avg_SeatComfort", 2] },
+            Avg_StaffService: { $round: ["$Avg_StaffService", 2] },
+            Avg_FoodnBeverages: { $round: ["$Avg_FoodnBeverages", 2] },
+            Avg_InflightEntertainment: { $round: ["$Avg_InflightEntertainment", 2] },
+            Avg_ValueForMoney: { $round: ["$Avg_ValueForMoney", 2] },
+            Avg_OverallRating: { $round: ["$Avg_OverallRating", 2] }
+        }
+    },
+    
+    { 
+        $sort: { Period: 1 } 
+    }
+]);
+
+
+
+
+// covid recommendation
+
+db.cleaned_reviews.aggregate([
+    { 
+        $match: { 
+            Airline: "Singapore Airlines" 
+        } 
+    },
+    
+    { 
+        $addFields: { 
+            MonthFlownParts: { $split: ["$MonthFlown", "-"] } 
+        }
+    },
+    
+    { 
+        $addFields: { 
+            MonthFlownFull: {
+                $concat: [
+                    "01-",               
+                    { $arrayElemAt: ["$MonthFlownParts", 0] }, 
+                    "-20",               
+                    { $arrayElemAt: ["$MonthFlownParts", 1] }   
+                ]
+            }
+        }
+    },
+    
+    { 
+        $addFields: { 
+            COVID_Period: { 
+                $cond: [
+                    { $lt: [ { $dateFromString: { dateString: "$MonthFlownFull", format: "%d-%b-%Y" } }, ISODate("2020-03-01") ] },
+                    "Pre-COVID",
+                    "Post-COVID"
+                ] 
+            }
+        } 
+    },
+    
+    { 
+        $addFields: {
+            TrimmedRecommended: { $toLower: { $trim: { input: "$Recommended" } } }
+        }
+    },
+    
+    { 
+        $group: {
+            _id: { Period: "$COVID_Period", TravellerType: "$TypeOfTraveller" },
+            RecommendedYesCount: { $sum: { $cond: [ { $eq: [ "$TrimmedRecommended", "yes" ] }, 1, 0 ] } },
+            RecommendedNoCount: { $sum: { $cond: [ { $eq: [ "$TrimmedRecommended", "no" ] }, 1, 0 ] } },
+            TotalCount: { $sum: 1 }
+        }
+    },
+    
+    { 
+        $project: {
+            _id: 0,
+            Period: "$_id.Period",
+            TravellerType: "$_id.TravellerType",
+            Percent_Recommended_Yes: { 
+                $round: [
+                    { $multiply: [ 
+                        { $divide: ["$RecommendedYesCount", "$TotalCount"] }, 100 
+                    ] }, 2
+                ]
+            },
+            Percent_Recommended_No: { 
+                $round: [
+                    { $multiply: [ 
+                        { $divide: ["$RecommendedNoCount", "$TotalCount"] }, 100 
+                    ] }, 2
+                ]
+            },
+        }
+    },
+    
+    { 
+        $sort: { Period: 1, TravellerType: 1 }
+    }
+]);
+
+  db.cleaned_reviews.updateMany({"polarity":0},{$set:{"complaints":"yes"}})
+  
+  // Textual analysis on Pre Covid complaints.
+  
+  db.cleaned_reviews.aggregate([
+  { 
+    $match: { complaints: "yes" } 
+  },
+  { 
+    $addFields: { 
+      ReviewDateConverted: { 
+        $dateFromString: { 
+          dateString: "$ReviewDate", 
+          format: "%d/%m/%Y" 
+        } 
+      } 
+    } 
+  },
+  { 
+    $match: { 
+      ReviewDateConverted: { $lte: ISODate("2020-03-01T00:00:00Z") }
+    } 
+  },
+  { 
+    $project: { 
+      words: { $split: [ { $toLower: "$Title" }, " " ] } 
+    } 
+  },
+  { $unwind: "$words" },
+  { 
+    $match: { 
+      words: { 
+        $nin: ["down","as","too","felt","up","their","them","than","they", 
+               "have","are","us","by","that","this","it","not","very","no",
+               "me","at","has","an","the", "is", "and", "in", "to", "a", 
+               "of", "with", "was", "i", "", "on", "for", "my", "were", "we"] 
+      } 
+    } 
+  },
+  { $group: { _id: "$words", count: { $sum: 1 } } },
+  { $sort: { count: -1 } },
+  { $limit: 100 }
+]);
+
+
+  // Textual analysis on Post Covid complaints.
+
+  db.cleaned_reviews.aggregate([
+  { 
+    $match: { complaints: "yes" } 
+  },
+  { 
+    $addFields: { 
+      ReviewDateConverted: { 
+        $dateFromString: { 
+          dateString: "$ReviewDate", 
+          format: "%d/%m/%Y" 
+        } 
+      } 
+    } 
+  },
+  { 
+    $match: { 
+      ReviewDateConverted: { $gte: ISODate("2020-03-01T00:00:00Z") }
+    } 
+  },
+  { 
+    $project: { 
+      words: { $split: [ { $toLower: "$Title" }, " " ] } 
+    } 
+  },
+  { $unwind: "$words" },
+  { 
+    $match: { 
+      words: { 
+        $nin: ["down","as","too","felt","up","their","them","than","they", 
+               "have","are","us","by","that","this","it","not","very","no",
+               "me","at","has","an","the", "is", "and", "in", "to", "a", 
+               "of", "with", "was", "i", "", "on", "for", "my", "were", "we"] 
+      } 
+    } 
+  },
+  { $group: { _id: "$words", count: { $sum: 1 } } },
+  { $sort: { count: -1 } },
+  { $limit: 100 }
+]);
+
 
 // Q10 
 //use associated words to denote exceptional circumstances
