@@ -62,6 +62,111 @@ group by Airline, Class
 );
 
 -- Q8 
+-- Our initial approach to finding complaints before we analysed it to find its limitations
+select * 
+from airlines_reviews
+where Recommended='no' or OverallRating<=5;
+
+--polarity done in python - please run the cleaned sql file
+--after running the sql script, there should be a table called cleaned_reviews
+--we set complaints as polarity as <= 0 
+SET SQL_SAFE_UPDATES = 0;
+update cleaned_reviews
+set complaints = "yes"
+where polarity <= 0;
+
+-- dropping of irrelevant rows to achieve a focused dataset
+alter table cleaned_reviews
+drop column Name,
+drop column Verified,
+drop column FIELD1,
+drop column _id,
+drop column Route,
+drop column cleaned_title;
+
+#--Extract top 100 words from the Title column
+WITH filtered_reviews AS (
+    SELECT Title
+    FROM cleaned_reviews
+    WHERE complaints = 'yes'
+),
+split_words AS (
+    SELECT 
+        LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(Title, ' ', n), ' ', -1)) AS word
+    FROM filtered_reviews
+    JOIN (
+        SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL 
+        SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL 
+        SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+    ) AS numbers
+    ON CHAR_LENGTH(Title) - CHAR_LENGTH(REPLACE(Title, ' ', '')) >= n - 1
+),
+filtered_words AS (
+    SELECT word
+    FROM split_words
+    WHERE word NOT IN (
+        'down', 'as', 'too', 'felt', 'up', 'their', 'them', 'than', 
+        'they', 'have', 'are', 'us', 'by', 'that', 'this', 'it', 
+        'not', 'very', 'no', 'me', 'at', 'has', 'an', 'the', 
+        'is', 'and', 'in', 'to', 'a', 'of', 'with', 'was', 'i', 
+        '', 'on', 'for', 'my', 'were', 'we'
+    )
+)
+SELECT 
+    word AS word, 
+    COUNT(*) AS count
+FROM filtered_words
+GROUP BY word
+ORDER BY count DESC
+LIMIT 100;
+
+-- Full text search using associated words on the Reviews column to find common complaints
+ALTER TABLE cleaned_reviews ADD FULLTEXT(Reviews);
+
+-- delay
+SELECT COUNT(*) AS count
+FROM cleaned_reviews
+WHERE complaints = 'yes'
+  AND MATCH(Reviews) AGAINST('delay late' IN NATURAL LANGUAGE MODE);
+
+
+-- food
+SELECT COUNT(*) AS count
+FROM cleaned_reviews
+WHERE complaints = 'yes'
+  AND MATCH(Reviews) AGAINST('tasteless food meal' IN NATURAL LANGUAGE MODE);
+
+-- service
+SELECT COUNT(*) AS count
+FROM cleaned_reviews
+WHERE complaints = 'yes'
+  AND MATCH(Reviews) AGAINST('service' IN NATURAL LANGUAGE MODE);
+
+-- seat
+SELECT COUNT(*) AS count
+FROM cleaned_reviews
+WHERE complaints = 'yes'
+  AND MATCH(Reviews) AGAINST('seat uncomfortable seats seating' IN NATURAL LANGUAGE MODE);
+
+-- entertainment
+SELECT COUNT(*) AS count
+FROM cleaned_reviews
+WHERE complaints = 'yes'
+  AND MATCH(Reviews) AGAINST('entertainment' IN NATURAL LANGUAGE MODE);
+
+-- compensation
+SELECT COUNT(*) AS count
+FROM cleaned_reviews
+WHERE complaints = 'yes'
+  AND MATCH(Reviews) AGAINST('compensation refund' IN NATURAL LANGUAGE MODE);
+
+-- baggage
+SELECT COUNT(*) AS count
+FROM cleaned_reviews
+WHERE complaints = 'yes'
+  AND MATCH(Reviews) AGAINST('baggage luggage' IN NATURAL LANGUAGE MODE);
+
+
 -- by rating 
 with Ratings as (
     (
@@ -137,7 +242,106 @@ select
 from Ratings
 order by Airline, TypeofTraveller, RatingType;
 
+-- Top 5 Issues for each Airline and Type of Traveller
 
+-- Delay
+SELECT 
+    Airline, 
+    TypeofTraveller, 
+    COUNT(*) AS count
+FROM 
+    cleaned_reviews
+WHERE 
+    MATCH(Reviews) AGAINST('delay late' IN NATURAL LANGUAGE MODE)
+    AND complaints = 'yes'
+GROUP BY 
+    Airline, 
+    TypeofTraveller;
+
+-- Food
+SELECT 
+    Airline, 
+    TypeofTraveller, 
+    COUNT(*) AS count
+FROM 
+    cleaned_reviews
+WHERE 
+    MATCH(Reviews) AGAINST('tasteless food meal' IN NATURAL LANGUAGE MODE)
+    AND complaints = 'yes'
+GROUP BY 
+    Airline, 
+    TypeofTraveller;
+
+-- Service
+SELECT 
+    Airline, 
+    TypeofTraveller, 
+    COUNT(*) AS count
+FROM 
+    cleaned_reviews
+WHERE 
+    MATCH(Reviews) AGAINST('service' IN NATURAL LANGUAGE MODE)
+    AND complaints = 'yes'
+GROUP BY 
+    Airline, 
+    TypeofTraveller;
+
+-- Seat
+SELECT 
+    Airline, 
+    TypeofTraveller, 
+    COUNT(*) AS count
+FROM 
+    cleaned_reviews
+WHERE 
+    MATCH(Reviews) AGAINST('seat uncomfortable ' IN NATURAL LANGUAGE MODE)
+    AND complaints = 'yes'
+GROUP BY 
+    Airline, 
+    TypeofTraveller;
+
+-- Entertainment
+SELECT 
+    Airline, 
+    TypeofTraveller, 
+    COUNT(*) AS count
+FROM 
+    cleaned_reviews
+WHERE 
+    MATCH(Reviews) AGAINST('entertainment' IN NATURAL LANGUAGE MODE)
+    AND complaints = 'yes'
+GROUP BY 
+    Airline, 
+    TypeofTraveller;
+
+-- Compensation
+SELECT 
+    Airline, 
+    TypeofTraveller, 
+    COUNT(*) AS count
+FROM 
+    cleaned_reviews
+WHERE 
+    MATCH(Reviews) AGAINST('compensation refund' IN NATURAL LANGUAGE MODE)
+    AND complaints = 'yes'
+GROUP BY 
+    Airline, 
+    TypeofTraveller;
+
+-- Baggage
+SELECT 
+    Airline, 
+    TypeofTraveller, 
+    COUNT(*) AS count
+FROM 
+    cleaned_reviews
+WHERE 
+    MATCH(Reviews) AGAINST('baggage luggage' IN NATURAL LANGUAGE MODE)
+    AND complaints = 'yes'
+GROUP BY 
+    Airline, 
+    TypeofTraveller;
+    
 
 -- Q9
 -- Number of Reviews pre and post covid
@@ -324,6 +528,79 @@ GROUP BY Period, TypeofTraveller;
 
 
 -- Q10
+--Find the problems passnegers face during exceptional circumstances
+-- New column to denote whether the reviews are due to exceptional circumstances -- use associated words with exceptional circumstances
+ALTER TABLE cleaned_reviews ADD COLUMN exceptional BOOLEAN DEFAULT FALSE;
+
+UPDATE cleaned_reviews
+SET exceptional = TRUE
+WHERE MATCH(Reviews) AGAINST('late weather condition prevent disaster strikes security restrictions delay miss defects typhoon wind turbulence control unrest' IN NATURAL LANGUAGE MODE)
+  AND Airline = 'Singapore Airlines'
+  AND complaints = 'yes';
+
+-- Extract top 100 words for reviews which talked about Exceptional Circumstances
+
+WITH FilteredReviews AS (
+  SELECT Title
+  FROM cleaned_reviews
+  WHERE exceptional = TRUE
+    AND Airline = 'Singapore Airlines'
+    AND complaints = 'yes'
+),
+Words AS (
+  SELECT
+    LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(Title, ' ', n), ' ', -1)) AS word
+  FROM FilteredReviews
+  JOIN (
+    SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+    UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8
+    UNION ALL SELECT 9 UNION ALL SELECT 10 -- Adjust for max number of words per title
+  ) numbers
+  ON CHAR_LENGTH(Title) - CHAR_LENGTH(REPLACE(Title, ' ', '')) + 1 >= n
+),
+FilteredWords AS (
+  SELECT word
+  FROM Words
+  WHERE word NOT IN ('down', 'as', 'too', 'felt', 'up', 'their', 'them', 'than',
+                     'they', 'have', 'are', 'us', 'by', 'that', 'this', 'it', 
+                     'not', 'very', 'no', 'me', 'at', 'has', 'an', 'the', 'is', 
+                     'and', 'in', 'to', 'a', 'of', 'with', 'was', 'i', '', 'on', 
+                     'for', 'my', 'were', 'we')
+),
+WordCounts AS (
+  SELECT
+    word AS _id,
+    COUNT(*) AS count
+  FROM FilteredWords
+  GROUP BY word
+)
+SELECT _id, count
+FROM WordCounts
+ORDER BY count DESC
+LIMIT 100;
+
+-- Through this, we saw a significant number complaining about service, compensation and delays
+-- Counting the number of negative reviews on each respective issue
+
+-- Compensation
+SELECT COUNT(*) AS count
+FROM cleaned_reviews
+WHERE complaints = 'yes' AND exceptional  = TRUE
+  AND MATCH(Reviews) AGAINST('compensation refund remunerate pay' IN NATURAL LANGUAGE MODE);
+
+-- Communication
+SELECT COUNT(*) AS count
+FROM cleaned_reviews
+WHERE complaints = 'yes' AND exceptional  = TRUE
+  AND MATCH(Reviews) AGAINST('communication information customer' IN NATURAL LANGUAGE MODE);
+
+-- Delay
+SELECT COUNT(*) AS count
+FROM cleaned_reviews
+WHERE complaints = 'yes' AND exceptional  = TRUE
+  AND MATCH(Reviews) AGAINST('late delay' IN NATURAL LANGUAGE MODE);
+
+
 -- clean data
 set SQL_SAFE_UPDATES = 0; -- Disable safe update mode
 DELETE FROM customer_support_with_tone WHERE category NOT IN ('CONTACT', 'CANCEL', 'FEEDBACK', 'INVOICE', 'ORDER', 'PAYMENT', 'REFUND', 'SHIPPING');
