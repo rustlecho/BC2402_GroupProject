@@ -692,3 +692,88 @@ db.cleaned_reviews.aggregate([
     count: { $sum: 1 }
   }
 }])
+// General chatbot response
+// 1. Delete documents not matching specific categories
+db.customer_support_with_tone.deleteMany({
+  category: { $nin: ['CONTACT', 'CANCEL', 'FEEDBACK', 'INVOICE', 'ORDER', 'PAYMENT', 'REFUND', 'SHIPPING'] }
+});
+
+// 2. Count the number of documents in the collection
+db.customer_support_with_tone.countDocuments();
+
+// 3. Percentage of Each Instruction Tone
+db.customer_support_with_tone.aggregate([
+  {
+    $group: {
+      _id: "$tone_instruction", // Group by instruction tone
+      count: { $sum: 1 } // Count the number of occurrences
+    }
+  },
+  {
+    $project: {
+      instruction_tone: "$_id", // Rename the _id field
+      percentage: { $multiply: [{ $divide: ["$count", 9074] }, 100] } // Calculate percentage
+    }
+  },
+  { $sort: { percentage: -1 } } // Sort by percentage in descending order
+]);
+
+// 4. Percentage of Each Response Tone
+db.customer_support_with_tone.aggregate([
+  {
+    $group: {
+      _id: "$tone", // Group by response tone
+      count: { $sum: 1 } // Count the number of occurrences
+    }
+  },
+  {
+    $project: {
+      response_tone: "$_id", // Rename the _id field
+      percentage: { $multiply: [{ $divide: ["$count", 9074] }, 100] } // Calculate percentage
+    }
+  },
+  { $sort: { percentage: -1 } } // Sort by percentage in descending order
+]);
+
+// 5. Responses that have fear or sadness tone
+db.customer_support_with_tone.find({
+  tone: { $in: ['fear', 'sadness'] } // Match documents with tone 'fear' or 'sadness'
+}, {
+  response: 1, // Include only the 'response' field
+  _id: 0 // Exclude the _id field from the result
+});
+
+// 6. Number of Instruction Tone and Response Tone
+db.customer_support_with_tone.aggregate([
+  {
+    $match: {
+      tone_instruction: { $in: ['anger', 'neutral', 'sadness', 'surprise'] } // Filter for specific instruction tones
+    }
+  },
+  {
+    $group: {
+      _id: { instruction_tone: "$tone_instruction", response_tone: "$tone" }, // Group by instruction and response tone
+      cnt: { $sum: 1 } // Count the number of occurrences
+    }
+  },
+  {
+    $sort: { "_id.instruction_tone": 1, cnt: -1 } // Sort by instruction tone and count in descending order
+  }
+]);
+
+// 7. Response tone that has complaint intent
+db.customer_support_with_tone.aggregate([
+  {
+    $match: { category: "FEEDBACK" } // Filter for 'FEEDBACK' category
+  },
+  {
+    $group: {
+      _id: { intent: "$intent", response_tone: "$tone" }, // Group by intent and response tone
+      cnt: { $sum: 1 } // Count the number of occurrences
+    }
+  },
+  {
+    $sort: { "_id.intent": 1, cnt: -1 } // Sort by intent and count in descending order
+  }
+]);
+
