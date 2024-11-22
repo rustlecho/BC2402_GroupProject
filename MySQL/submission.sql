@@ -9,16 +9,6 @@ select count(*) as cnt from customer_support
 where flags like '%Q%' and flags like '%W%';
 
 -- Q3
-select a.Airline, a.Cancellations, b.Delays
-from (
-	select Airline, count(case when Cancelled = 1 then 1 else null end) as Cancellations
-	from flight_delay 
-	group by Airline) as a
-left join (
-	select Airline, count(case when ArrDelay > 0 then 1 else null end) as Delays
-	from flight_delay 
-	group by Airline) as b
-on a.Airline = b.Airline;
 
 -- Q4
 with mdelay as (
